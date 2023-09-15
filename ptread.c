@@ -1,12 +1,8 @@
-/* File:  
- *    pth_pool.c
+/*   
+ *    
  *
- * Purpose:
- *    Implementação de um pool de threads
- *
- *
- * Compile:  gcc -g -Wall -o pool_rvet pool_rvet.c -lpthread -lrt
- * Usage:    ./pool_rvet
+ * Compile: mpicc  -o ptread ptread.c -lpthread -lrt
+ * Usage:    mpiexec -n 3 ./ptread
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -14,6 +10,7 @@
 #include <unistd.h>
 #include <semaphore.h>
 #include <time.h>
+#include <mpi.h>     
 
 #define THREAD_NUM 6    // Tamanho do pool de threads
 #define BUFFER_SIZE 6 // Númermo máximo de tarefas enfileiradas
@@ -23,7 +20,14 @@ typedef struct Clock {
    int p[4];
 } Clock;
 
+   pthread_t thread[THREAD_NUM]; 
+
+void *startProducerThread(void* args);  
+
+void *startConsumerThread(void* args);
+
 Clock taskQueue[BUFFER_SIZE];
+Clock executeQueue[BUFFER_SIZE];
 int taskCount = 0;
 
 pthread_mutex_t mutex;
@@ -73,7 +77,7 @@ void criarThreads(int n){
 
 // Representa o processo de rank 0
 void process0(){
-   criarThreads();
+   criarThreads(0);
    Clock clock = {{0,0,0}};
    Event(0, &clock);
     Send(0, &clock,1);
@@ -91,7 +95,7 @@ void process0(){
 
 // Representa o processo de rank 1
 void process1(){
-   criarThreads();
+   criarThreads(1);
    Clock clock = {{0,0,0}};
    Send(1, &clock,0);
    Receive(1, &clock,0);
@@ -103,7 +107,7 @@ void process1(){
 
 // Representa o processo de rank 2
 void process2(){
-   criarThreads();
+   criarThreads(2);
    Clock clock = {{0,0,0}};
    Event(2, &clock);
    Send(2, &clock,0);
@@ -153,9 +157,6 @@ void submitTask(Clock clock){
    pthread_cond_signal(&condEmpty);
 }
 
-void *startProducerThread(void* args);  
-
-void *startConsumerThread(void* args);
 
 /*--------------------------------------------------------------------*/
 int main(int argc, char* argv[]) {
@@ -164,7 +165,6 @@ int main(int argc, char* argv[]) {
    pthread_cond_init(&condEmpty, NULL);
    pthread_cond_init(&condFull, NULL);
 
-   pthread_t thread[THREAD_NUM]; 
    srand(time(NULL));
    long i;
    
@@ -204,6 +204,7 @@ int main(int argc, char* argv[]) {
 /*-------------------------------------------------------------------*/
 void *startProducerThread(void* args) {
    long id = (long) args; 
+   printf(id);
    for(int i=0;i<50;i++){
       Clock clock = {rand()%100,rand()%100,rand()%100};
       printf("produziu %d %d %d \n",clock.p[0],clock.p[1],clock.p[2]);
@@ -213,8 +214,9 @@ void *startProducerThread(void* args) {
    return NULL;
 } 
 void *startConsumerThread(void* args) {
-   mpireceive()
-   long id = (long) args; 
+//   mpireceive();
+   int id = (int) args; 
+   printf("%d iddd",id);
    for(int i=0;i<50;i++){
       Clock clock = getTask();
       executeTask(&clock, id);
@@ -225,6 +227,7 @@ void *startConsumerThread(void* args) {
 
 void *mainThread(void* args) {
    long id = (long) args; 
+   printf("%d iddd",id);
    for(int i=0;i<50;i++){
       Clock clock = getTask();
       executeTask(&clock, id);
